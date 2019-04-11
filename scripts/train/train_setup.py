@@ -35,6 +35,11 @@ def train(config):
     way = config['data.train_way']
     w, h, c = list(map(int, config['model.x_dim'].split(',')))
     model = MatchingNetwork(way=way, w=w, h=h, c=c)
+    if config['train.restore']:
+        with tf.device(device_name):
+            model.load(config['model.save_dir'])
+            print(f"Model restored from {config['model.save_dir']}")
+
     optimizer = tf.keras.optimizers.Adam(config['train.lr'])
 
     # Metrics to gather
