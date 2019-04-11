@@ -89,7 +89,6 @@ class MatchingNetwork(Model):
             outputs = tf.stack(emb_imgs)
 
             # Fully contextual embedding
-            print("Outputs shape: ", outputs.shape)
             outputs = self.fce(outputs)
 
             # Cosine similarity between support set and query

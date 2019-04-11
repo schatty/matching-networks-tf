@@ -5,9 +5,9 @@ import numpy as np
 import tensorflow as tf
 tf.config.gpu.set_per_process_memory_growth(True)
 
-from omniglot import load_omniglot
-from train_engine import TrainEngine
-from matching_network import MatchingNetwork
+from matchnet.data import load
+from matchnet import TrainEngine
+from matchnet.models import MatchingNetwork
 
 
 def train(config):
@@ -20,7 +20,7 @@ def train(config):
         os.makedirs(model_dir)
 
     data_dir = f"data/{config['data.dataset']}"
-    ret = load_omniglot(data_dir, config, ['train', 'val'])
+    ret = load(data_dir, config, ['train', 'val'])
     train_loader = ret['train']
     val_loader = ret['val']
 
@@ -33,8 +33,6 @@ def train(config):
 
     # Setup training operations
     way = config['data.train_way']
-    n_support = config['data.train_support']
-    n_query = config['data.train_query']
     w, h, c = list(map(int, config['model.x_dim'].split(',')))
     model = MatchingNetwork(way=way, w=w, h=h, c=c)
     optimizer = tf.keras.optimizers.Adam(config['train.lr'])
@@ -80,7 +78,6 @@ def train(config):
     train_engine.hooks['on_end'] = on_end
 
     def on_start_epoch(state):
-        #print(f"Epoch {state['epoch']} started.")
         train_loss.reset_states()
         val_loss.reset_states()
         train_acc.reset_states()
@@ -141,76 +138,3 @@ def train(config):
     h, min = elapsed//3600, elapsed%3600//60
     sec = elapsed-min*60
     print(f"Training took: {h} h {min} min {sec} sec")
-
-
-def eval(config):
-    # Determine device
-    if config['data.cuda']:
-        cuda_num = config['data.gpu']
-        device_name = f'GPU:{cuda_num}'
-    else:
-        device_name = 'CPU:0'
-
-    data_dir = f"data/{config['data.dataset']}"
-    ret = load_omniglot(data_dir, config, ['test'])
-    test_loader = ret['test']
-
-    # Setup training operations
-    way = config['data.test_way']
-    n_support = config['data.train_support']
-    n_query = config['data.train_query']
-    w, h, c = list(map(int, config['model.x_dim'].split(',')))
-
-    # Metrics to gather
-    test_loss = tf.metrics.Mean(name='test_loss')
-    test_acc = tf.metrics.Mean(name='test_accuracy')
-
-    model = MatchingNetwork(way, w, h, c)
-    model.load(config['model.save_dir'])
-
-    def calc_loss(x_support, y_support, x_query, y_query):
-        loss, acc = model(x_support, y_support, x_query, y_query)
-        return loss, acc
-
-    with tf.device(device_name):
-        for i_episode in tqdm(range(config['data.test_episodes'])):
-            x_support, y_support, x_query, y_query = test_loader.get_next_episode()
-            if (i_episode + 1) % 50 == 0:
-                print("Episode: ", i_episode + 1)
-            loss, acc = calc_loss(x_support, y_support, x_query, y_query)
-            test_loss(loss)
-            test_acc(acc)
-
-    print("Loss: ", test_loss.result().numpy())
-    print("Accuracy: ", test_acc.result().numpy())
-
-
-if __name__ == "__main__":
-    print("CUDA available: ", tf.test.is_gpu_available())
-
-    config = {
-        'data.dataset': 'omniglot',
-        'data.cuda': True,
-        'data.gpu': 0,
-        'data.split': 'vinyals',
-        'data.train_way': 5,
-        'data.train_support': 5,
-        'data.train_query': 1,
-        'data.test_way': 5,
-        'data.test_support': 5,
-        'data.test_query': 1,
-        'data.episodes': 1,
-        'data.batch': 32,
-
-        'data.test_episodes': 100,
-
-        'train.epochs': 1,
-        'train.patience': 100,
-        'train.lr': 0.001,
-
-        'model.x_dim': '28,28,1',
-        'model.save_dir': 'results/models/test'
-    }
-
-    train(config)
-    eval(config)
