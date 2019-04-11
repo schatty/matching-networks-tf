@@ -20,9 +20,9 @@ class OmniglotDataLoader(object):
         y_support = np.zeros([self.batch, self.n_way * self.n_support])
         x_query = np.zeros([self.batch, self.n_way * self.n_query, 28, 28, 1], dtype=np.float32)
         y_query = np.zeros([self.batch, self.n_way * self.n_query])
-        classes_ep = np.random.permutation(self.n_classes)[:self.n_way]
 
         for i_batch in range(self.batch):
+            classes_ep = np.random.permutation(self.n_classes)[:self.n_way]
             x_support_batch = []
             y_support_batch = []
             x_query_batch = []
@@ -30,9 +30,9 @@ class OmniglotDataLoader(object):
             for i, i_class in enumerate(classes_ep):
                 selected = np.random.permutation(n_examples)[:self.n_support + self.n_query]
                 x_support_batch.append(self.data[i_class, selected[:self.n_support]])
-                y_support_batch += [i_class] * self.n_support
+                y_support_batch += [i] * self.n_support
                 x_query_batch.append(self.data[i_class, selected[self.n_support:]])
-                y_query_batch += [i_class] * self.n_query
+                y_query_batch += [i] * self.n_query
             x_support[i_batch, :, :, :, :] = np.vstack(x_support_batch)
             y_support[i_batch, :] = np.asarray(y_support_batch)
             x_query[i_batch, :, :, :, :] = np.vstack(x_query_batch)

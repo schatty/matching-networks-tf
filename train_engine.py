@@ -32,8 +32,10 @@ class TrainEngine(object):
 
         self.hooks['on_start'](state)
         for epoch in range(state['epochs']):
+            print("Epoch: ", epoch)
             self.hooks['on_start_epoch'](state)
             for i_episode in range(state['n_episodes']):
+                print("Episode: ", i_episode)
                 x_support, y_support, x_query, y_query = train_loader.get_next_episode()
                 state['sample'] = (x_support, y_support, x_query, y_query)
                 self.hooks['on_start_episode'](state)

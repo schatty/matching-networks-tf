@@ -44,16 +44,19 @@ def train(config):
     val_acc = tf.metrics.Mean(name='val_accuracy')
     val_losses = []
 
-    @tf.function
-    def loss(support, query):
-        loss, acc = model(support, query)
+    #@tf.function
+    def loss(x_support, y_support, x_query, y_query):
+        loss, acc = model(x_support, y_support, x_query, y_query)
         return loss, acc
 
-    @tf.function
+    #@tf.function
     def train_step(loss_func, x_support, y_support, x_query, y_query):
+        print("before gradient tape: ")
+        print(x_support.shape, y_support.shape, x_query.shape, y_query.shape)
         # Forward & update gradients
         with tf.GradientTape() as tape:
             loss, acc = model(x_support, y_support, x_query, y_query)
+        print("after gradient tape: ", loss)
         gradients = tape.gradient(loss, model.trainable_variables)
         optimizer.apply_gradients(
             zip(gradients, model.trainable_variables))
@@ -62,7 +65,7 @@ def train(config):
         train_loss(loss)
         train_acc(acc)
 
-    @tf.function
+    #@tf.function
     def val_step(loss_func, x_support, y_support, x_query, y_query):
         loss, acc = loss_func(x_support, y_support, x_query, y_query)
         val_loss(loss)
@@ -144,6 +147,29 @@ def train(config):
     sec = elapsed-min*60
     print(f"Training took: {h} h {min} min {sec} sec")
 
+    ret = load_omniglot(data_dir, config, ['test'])
+    test_loader = ret['test']
+
+    # Metrics to gather
+    test_loss = tf.metrics.Mean(name='test_loss')
+    test_acc = tf.metrics.Mean(name='test_accuracy')
+
+    def calc_loss(x_support, y_support, x_query, y_query):
+        loss, acc = model(x_support, y_support, x_query, y_query)
+        return loss, acc
+
+    with tf.device(device_name):
+        for i_episode in range(config['data.test_episodes']):
+            x_support, y_support, x_query, y_query = test_loader.get_next_episode()
+            if (i_episode + 1) % 50 == 0:
+                print("Episode: ", i_episode + 1)
+            loss, acc = calc_loss(x_support, y_support, x_query, y_query)
+            test_loss(loss)
+            test_acc(acc)
+
+    print("Loss: ", test_loss.result().numpy())
+    print("Accuracy: ", test_acc.result().numpy())
+
 
 if __name__ == "__main__":
     print("CUDA available: ", tf.test.is_gpu_available())
@@ -159,10 +185,13 @@ if __name__ == "__main__":
         'data.test_way': 5,
         'data.test_support': 5,
         'data.test_query': 1,
-        'data.episodes': 1,
+        'data.episodes': 20,
         'data.batch': 32,
 
-        'train.epochs': 1,
+        'data.test_episodes': 10,
+
+        'train.epochs': 5,
+        'train.patience': 100,
         'train.lr': 0.001,
 
         'model.x_dim': '28,28,1',
