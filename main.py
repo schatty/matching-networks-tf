@@ -1,5 +1,6 @@
 import os
 import time
+from tqdm import tqdm
 import numpy as np
 import tensorflow as tf
 tf.config.gpu.set_per_process_memory_growth(True)
@@ -34,7 +35,7 @@ def train(config):
     n_support = config['data.train_support']
     n_query = config['data.train_query']
     w, h, c = list(map(int, config['model.x_dim'].split(',')))
-    model = MatchingNetwork()
+    model = MatchingNetwork(way=5)
     optimizer = tf.keras.optimizers.Adam(config['train.lr'])
 
     # Metrics to gather
@@ -44,19 +45,14 @@ def train(config):
     val_acc = tf.metrics.Mean(name='val_accuracy')
     val_losses = []
 
-    #@tf.function
     def loss(x_support, y_support, x_query, y_query):
         loss, acc = model(x_support, y_support, x_query, y_query)
         return loss, acc
 
-    #@tf.function
     def train_step(loss_func, x_support, y_support, x_query, y_query):
-        print("before gradient tape: ")
-        print(x_support.shape, y_support.shape, x_query.shape, y_query.shape)
         # Forward & update gradients
         with tf.GradientTape() as tape:
             loss, acc = model(x_support, y_support, x_query, y_query)
-        print("after gradient tape: ", loss)
         gradients = tape.gradient(loss, model.trainable_variables)
         optimizer.apply_gradients(
             zip(gradients, model.trainable_variables))
@@ -65,7 +61,6 @@ def train(config):
         train_loss(loss)
         train_acc(acc)
 
-    #@tf.function
     def val_step(loss_func, x_support, y_support, x_query, y_query):
         loss, acc = loss_func(x_support, y_support, x_query, y_query)
         val_loss(loss)
@@ -84,7 +79,7 @@ def train(config):
     train_engine.hooks['on_end'] = on_end
 
     def on_start_epoch(state):
-        print(f"Epoch {state['epoch']} started.")
+        #print(f"Epoch {state['epoch']} started.")
         train_loss.reset_states()
         val_loss.reset_states()
         train_acc.reset_states()
@@ -92,12 +87,11 @@ def train(config):
     train_engine.hooks['on_start_epoch'] = on_start_epoch
 
     def on_end_epoch(state):
-        print(f"Epoch {state['epoch']} ended.")
+        #print(f"Epoch {state['epoch']} ended.")
         epoch = state['epoch']
         template = 'Epoch {}, Loss: {}, Accuracy: {}, ' \
                    'Val Loss: {}, Val Accuracy: {}'
-        print(
-            template.format(epoch + 1, train_loss.result(), train_acc.result() * 100,
+        print(template.format(epoch, train_loss.result(), train_acc.result() * 100,
                             val_loss.result(),
                             val_acc.result() * 100))
 
@@ -116,7 +110,7 @@ def train(config):
     train_engine.hooks['on_end_epoch'] = on_end_epoch
 
     def on_start_episode(state):
-        if state['total_episode'] % 20 == 0:
+        if state['total_episode'] % 50 == 0:
             print(f"Episode {state['total_episode']}")
         x_support, y_support, x_query, y_query = state['sample']
         loss_func = state['loss_func']
@@ -159,7 +153,7 @@ def train(config):
         return loss, acc
 
     with tf.device(device_name):
-        for i_episode in range(config['data.test_episodes']):
+        for i_episode in tqdm(range(config['data.test_episodes'])):
             x_support, y_support, x_query, y_query = test_loader.get_next_episode()
             if (i_episode + 1) % 50 == 0:
                 print("Episode: ", i_episode + 1)
@@ -185,12 +179,12 @@ if __name__ == "__main__":
         'data.test_way': 5,
         'data.test_support': 5,
         'data.test_query': 1,
-        'data.episodes': 20,
+        'data.episodes': 100,
         'data.batch': 32,
 
-        'data.test_episodes': 10,
+        'data.test_episodes': 100,
 
-        'train.epochs': 5,
+        'train.epochs': 20,
         'train.patience': 100,
         'train.lr': 0.001,
 
