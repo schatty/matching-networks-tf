@@ -19,13 +19,14 @@ def eval(config):
 
     # Setup training operations
     way = config['data.test_way']
+    lstm_dim = config['model.lstm_size']
     w, h, c = list(map(int, config['model.x_dim'].split(',')))
 
     # Metrics to gather
     test_loss = tf.metrics.Mean(name='test_loss')
     test_acc = tf.metrics.Mean(name='test_accuracy')
 
-    model = MatchingNetwork(way, w, h, c)
+    model = MatchingNetwork(way, w, h, c, lstm_size=lstm_dim)
     model.load(config['model.save_dir'])
 
     def calc_loss(x_support, y_support, x_query, y_query):
