@@ -179,12 +179,12 @@ if __name__ == "__main__":
         'data.test_way': 5,
         'data.test_support': 5,
         'data.test_query': 1,
-        'data.episodes': 100,
+        'data.episodes': 1,
         'data.batch': 32,
 
         'data.test_episodes': 100,
 
-        'train.epochs': 20,
+        'train.epochs': 1,
         'train.patience': 100,
         'train.lr': 0.001,
 

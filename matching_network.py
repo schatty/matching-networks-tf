@@ -1,6 +1,6 @@
 import numpy as np
 import tensorflow as tf
-from tensorflow.keras.layers import Dense, Flatten, Conv2D
+from tensorflow.keras.layers import Dense, Flatten, Conv2D, Bidirectional
 from tensorflow.keras import Model
 from tensorflow.keras.backend import categorical_crossentropy, batch_dot
 
@@ -31,6 +31,10 @@ class MatchingNetwork(Model):
             tf.keras.layers.ReLU(),
             tf.keras.layers.MaxPool2D((2, 2)), Flatten()]
         )
+        # Fully contextual embedding
+        self.fce = tf.keras.Sequential([
+            Bidirectional(tf.keras.layers.LSTM(32, return_sequences=True))
+        ])
 
     @tf.function
     def call(self, x_support, y_support, x_query, y_query):
@@ -78,6 +82,9 @@ class MatchingNetwork(Model):
             query_emb = self.g(x_query[:, i_query, :, :, :])
             emb_imgs.append(query_emb)
             outputs = tf.stack(emb_imgs)
+
+            # Fully contextual embedding
+            outputs = self.fce(outputs)
 
             # Cosine similarity between support set and query
             similarities = _calc_cosine_distances(outputs[:-1], outputs[-1])
