@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import tensorflow as tf
 from tensorflow.keras.layers import Dense, Flatten, Conv2D, Bidirectional
@@ -6,10 +7,13 @@ from tensorflow.keras.backend import categorical_crossentropy, batch_dot
 
 
 class MatchingNetwork(Model):
-    def __init__(self, way):
+    def __init__(self, way, w, h, c, lstm_size=32, batch_size=32):
         super(MatchingNetwork, self).__init__()
 
         self.way = way
+        self.w, self.h, self.c = w, h, c
+        self.batch_size = batch_size
+
         self.g = tf.keras.Sequential([
             tf.keras.layers.Conv2D(filters=64, kernel_size=3, padding='same'),
             tf.keras.layers.BatchNormalization(),
@@ -32,8 +36,9 @@ class MatchingNetwork(Model):
             tf.keras.layers.MaxPool2D((2, 2)), Flatten()]
         )
         # Fully contextual embedding
+        self.fce_dim = lstm_size * 2
         self.fce = tf.keras.Sequential([
-            Bidirectional(tf.keras.layers.LSTM(32, return_sequences=True))
+            Bidirectional(tf.keras.layers.LSTM(lstm_size, return_sequences=True))
         ])
 
     @tf.function
@@ -84,6 +89,7 @@ class MatchingNetwork(Model):
             outputs = tf.stack(emb_imgs)
 
             # Fully contextual embedding
+            print("Outputs shape: ", outputs.shape)
             outputs = self.fce(outputs)
 
             # Cosine similarity between support set and query
@@ -110,8 +116,19 @@ class MatchingNetwork(Model):
 
         return ce/self.query_samples, acc/self.query_samples
 
-    def save(self, model_path):
-        pass
+    def save(self, dir_path):
+        if not os.path.exists(dir_path):
+            os.makedirs(dir_path)
+        # Save CNN encoder
+        self.g.save(os.path.join(dir_path, 'cnn_encoder.h5'))
 
-    def load(self, model_path):
-        pass
+        # Save LSTM
+        self.fce.save(os.path.join(dir_path, 'lstm.h5'))
+
+    def load(self, dir_path):
+        encoder_path = os.path.join(dir_path, 'cnn_encoder.h5')
+        self.g(tf.zeros([1, self.w, self.h, self.c]))
+        self.g.load_weights(encoder_path)
+        lstm_path = os.path.join(dir_path, 'lstm.h5')
+        self.fce(tf.zeros([1, self.batch_size, self.fce_dim]))
+        self.fce.load_weights(lstm_path)

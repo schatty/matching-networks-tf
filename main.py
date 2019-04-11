@@ -15,7 +15,7 @@ def train(config):
     tf.random.set_seed(2019)
 
     # Create folder for model
-    model_dir = config['model.save_path'][:config['model.save_path'].rfind('/')]
+    model_dir = config['model.save_dir'][:config['model.save_dir'].rfind('/')]
     if not os.path.exists(model_dir):
         os.makedirs(model_dir)
 
@@ -32,10 +32,11 @@ def train(config):
         device_name = 'CPU:0'
 
     # Setup training operations
+    way = config['data.train_way']
     n_support = config['data.train_support']
     n_query = config['data.train_query']
     w, h, c = list(map(int, config['model.x_dim'].split(',')))
-    model = MatchingNetwork(way=5)
+    model = MatchingNetwork(way=way, w=w, h=h, c=c)
     optimizer = tf.keras.optimizers.Adam(config['train.lr'])
 
     # Metrics to gather
@@ -99,7 +100,7 @@ def train(config):
         if cur_loss < state['best_val_loss']:
             print("Saving new best model with loss: ", cur_loss)
             state['best_val_loss'] = cur_loss
-            model.save(config['model.save_path'])
+            model.save(config['model.save_dir'])
         val_losses.append(cur_loss)
 
         # Early stopping
@@ -141,12 +142,31 @@ def train(config):
     sec = elapsed-min*60
     print(f"Training took: {h} h {min} min {sec} sec")
 
+
+def eval(config):
+    # Determine device
+    if config['data.cuda']:
+        cuda_num = config['data.gpu']
+        device_name = f'GPU:{cuda_num}'
+    else:
+        device_name = 'CPU:0'
+
+    data_dir = f"data/{config['data.dataset']}"
     ret = load_omniglot(data_dir, config, ['test'])
     test_loader = ret['test']
+
+    # Setup training operations
+    way = config['data.test_way']
+    n_support = config['data.train_support']
+    n_query = config['data.train_query']
+    w, h, c = list(map(int, config['model.x_dim'].split(',')))
 
     # Metrics to gather
     test_loss = tf.metrics.Mean(name='test_loss')
     test_acc = tf.metrics.Mean(name='test_accuracy')
+
+    model = MatchingNetwork(way, w, h, c)
+    model.load(config['model.save_dir'])
 
     def calc_loss(x_support, y_support, x_query, y_query):
         loss, acc = model(x_support, y_support, x_query, y_query)
@@ -189,7 +209,8 @@ if __name__ == "__main__":
         'train.lr': 0.001,
 
         'model.x_dim': '28,28,1',
-        'model.save_path': 'results/models/test.h5'
+        'model.save_dir': 'results/models/test'
     }
 
     train(config)
+    eval(config)
