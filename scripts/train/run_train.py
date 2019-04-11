@@ -10,7 +10,7 @@ def preprocess_config(c):
                   'data.test_support', 'data.train_query', 'data.test_query',
                   'data.query', 'data.support', 'data.way', 'data.episodes',
                   'data.gpu', 'data.cuda', 'model.lstm_size', 'train.epochs',
-                  'train.patience', 'data.batch']
+                  'train.patience', 'data.batch', 'train.restore']
     float_params = ['train.lr']
     for param in c:
         if param in int_params:

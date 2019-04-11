@@ -1,10 +1,21 @@
 import os
 import time
-from tqdm import tqdm
+import datetime
+from shutil import copyfile
+
+# Logging before other imports (yes, I have serious issues with that, help me)
+import logging
+real_log = f"{datetime.datetime.now():%Y-%m-%d_%H:%M}.log"
+logging.basicConfig(filename=real_log,
+                    format='%(asctime)s - %(levelname)s - %(message)s',
+                    datefmt='%Y.%m.%d %H:%M:%S',
+                    level=logging.DEBUG)
+logging.getLogger("tensorflow").setLevel(logging.WARNING)
+logging.getLogger("PIL").setLevel(logging.WARNING)
+
 import numpy as np
 import tensorflow as tf
 tf.config.gpu.set_per_process_memory_growth(True)
-
 from matchnet.data import load
 from matchnet import TrainEngine
 from matchnet.models import MatchingNetwork
@@ -18,6 +29,14 @@ def train(config):
     model_dir = config['model.save_dir'][:config['model.save_dir'].rfind('/')]
     if not os.path.exists(model_dir):
         os.makedirs(model_dir)
+
+    # Create folder for logs
+    log_dir = config['train.log_dir']
+    if not os.path.exists(log_dir):
+        os.makedirs(log_dir)
+    log_fn = f"{config['data.dataset']}_{datetime.datetime.now():%Y-%m-%d_%H:%M}.log"
+    log_fn = os.path.join(log_dir, log_fn)
+    print(f"All info about training can be found in {log_fn}")
 
     data_dir = f"data/{config['data.dataset']}"
     ret = load(data_dir, config, ['train', 'val'])
@@ -38,7 +57,7 @@ def train(config):
     if config['train.restore']:
         with tf.device(device_name):
             model.load(config['model.save_dir'])
-            print(f"Model restored from {config['model.save_dir']}")
+            logging.info(f"Model restored from {config['model.save_dir']}")
 
     optimizer = tf.keras.optimizers.Adam(config['train.lr'])
 
@@ -75,11 +94,11 @@ def train(config):
 
     # Set hooks on training engine
     def on_start(state):
-        print("Training started.")
+        logging.info("Training started.")
     train_engine.hooks['on_start'] = on_start
 
     def on_end(state):
-        print("Training ended.")
+        logging.info("Training ended.")
     train_engine.hooks['on_end'] = on_end
 
     def on_start_epoch(state):
@@ -90,17 +109,18 @@ def train(config):
     train_engine.hooks['on_start_epoch'] = on_start_epoch
 
     def on_end_epoch(state):
-        #print(f"Epoch {state['epoch']} ended.")
+        logging.info(f"Epoch {state['epoch']} ended.")
         epoch = state['epoch']
-        template = 'Epoch {}, Loss: {}, Accuracy: {}, ' \
-                   'Val Loss: {}, Val Accuracy: {}'
-        print(template.format(epoch, train_loss.result(), train_acc.result() * 100,
+        template = 'Epoch {}, Loss: {:10.6f}, Accuracy: {:5.3f}, ' \
+                   'Val Loss: {:10.6f}, Val Accuracy: {:5.3f}'
+        msg = template.format(epoch, train_loss.result(), train_acc.result() * 100,
                             val_loss.result(),
-                            val_acc.result() * 100))
+                            val_acc.result() * 100)
+        logging.info(msg)
 
         cur_loss = val_loss.result().numpy()
         if cur_loss < state['best_val_loss']:
-            print("Saving new best model with loss: ", cur_loss)
+            logging.info("Saving new best model with loss: {:10.6f}".format(cur_loss))
             state['best_val_loss'] = cur_loss
             model.save(config['model.save_dir'])
         val_losses.append(cur_loss)
@@ -113,8 +133,7 @@ def train(config):
     train_engine.hooks['on_end_epoch'] = on_end_epoch
 
     def on_start_episode(state):
-        if state['total_episode'] % 50 == 0:
-            print(f"Episode {state['total_episode']}")
+        logging.info(f"Episode {state['total_episode']}")
         x_support, y_support, x_query, y_query = state['sample']
         loss_func = state['loss_func']
         train_step(loss_func, x_support, y_support, x_query, y_query)
@@ -142,4 +161,5 @@ def train(config):
     elapsed = time_end - time_start
     h, min = elapsed//3600, elapsed%3600//60
     sec = elapsed-min*60
-    print(f"Training took: {h} h {min} min {sec} sec")
+    logging.info(f"Training took: {h} h {min} min {sec} sec")
+    copyfile(real_log, log_fn)
