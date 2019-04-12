@@ -1,10 +1,14 @@
 import os
 import glob
 import numpy as np
+from numpy.random import permutation
 from PIL import Image
 
 
 class OmniglotDataLoader(object):
+    """
+    Data loader for omniglot dataset. Should povide episode data on demand.
+    """
     def __init__(self, data, batch, n_classes, n_way, n_support, n_query):
         self.data = data
         self.n_way = n_way
@@ -14,20 +18,28 @@ class OmniglotDataLoader(object):
         self.n_query = n_query
 
     def get_next_episode(self):
+        """
+        Form episode data.
+
+        Returns (np.ndarray, np.ndarray, np.ndarray, np.ndarray):
+
+        """
         n_examples = 20
-        x_support = np.zeros([self.batch, self.n_way * self.n_support, 28, 28, 1], dtype=np.float32)
+        x_support = np.zeros([self.batch, self.n_way * self.n_support,
+                              28, 28, 1], dtype=np.float32)
         y_support = np.zeros([self.batch, self.n_way * self.n_support])
-        x_query = np.zeros([self.batch, self.n_way * self.n_query, 28, 28, 1], dtype=np.float32)
+        x_query = np.zeros([self.batch, self.n_way * self.n_query,
+                            28, 28, 1], dtype=np.float32)
         y_query = np.zeros([self.batch, self.n_way * self.n_query])
 
         for i_batch in range(self.batch):
-            classes_ep = np.random.permutation(self.n_classes)[:self.n_way]
+            classes_ep = permutation(self.n_classes)[:self.n_way]
             x_support_batch = []
             y_support_batch = []
             x_query_batch = []
             y_query_batch = []
             for i, i_class in enumerate(classes_ep):
-                selected = np.random.permutation(n_examples)[:self.n_support + self.n_query]
+                selected = permutation(n_examples)[:self.n_support + self.n_query]
                 x_support_batch.append(self.data[i_class, selected[:self.n_support]])
                 y_support_batch += [i] * self.n_support
                 x_query_batch.append(self.data[i_class, selected[self.n_support:]])

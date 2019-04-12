@@ -38,7 +38,7 @@ def train(config):
     log_fn = os.path.join(log_dir, log_fn)
     print(f"All info about training can be found in {log_fn}")
 
-    data_dir = f"data/{config['data.dataset']}"
+    data_dir = config['data.dataset_path']
     ret = load(data_dir, config, ['train', 'val'])
     train_loader = ret['train']
     val_loader = ret['val']
@@ -52,8 +52,9 @@ def train(config):
 
     # Setup training operations
     way = config['data.train_way']
+    lstm_dim = config['model.lstm_size']
     w, h, c = list(map(int, config['model.x_dim'].split(',')))
-    model = MatchingNetwork(way=way, w=w, h=h, c=c)
+    model = MatchingNetwork(way=way, w=w, h=h, c=c, lstm_size=lstm_dim)
     if config['train.restore']:
         with tf.device(device_name):
             model.load(config['model.save_dir'])

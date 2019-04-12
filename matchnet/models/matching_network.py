@@ -1,7 +1,7 @@
 import os
-import numpy as np
 import tensorflow as tf
-from tensorflow.keras.layers import Dense, Flatten, Conv2D, Bidirectional
+from tensorflow.keras.layers import Dense, Flatten, Conv2D, Bidirectional, \
+    BatchNormalization, ReLU, MaxPool2D
 from tensorflow.keras import Model
 from tensorflow.keras.backend import categorical_crossentropy, batch_dot
 
@@ -15,25 +15,26 @@ class MatchingNetwork(Model):
         self.batch_size = batch_size
 
         self.g = tf.keras.Sequential([
-            tf.keras.layers.Conv2D(filters=64, kernel_size=3, padding='same'),
-            tf.keras.layers.BatchNormalization(),
-            tf.keras.layers.ReLU(),
-            tf.keras.layers.MaxPool2D((2, 2)),
+            Conv2D(filters=64, kernel_size=3, padding='same'),
+            BatchNormalization(),
+            ReLU(),
+            MaxPool2D((2, 2)),
 
-            tf.keras.layers.Conv2D(filters=64, kernel_size=3, padding='same'),
-            tf.keras.layers.BatchNormalization(),
-            tf.keras.layers.ReLU(),
-            tf.keras.layers.MaxPool2D((2, 2)),
+            Conv2D(filters=64, kernel_size=3, padding='same'),
+            BatchNormalization(),
+            ReLU(),
+            MaxPool2D((2, 2)),
 
-            tf.keras.layers.Conv2D(filters=64, kernel_size=3, padding='same'),
-            tf.keras.layers.BatchNormalization(),
-            tf.keras.layers.ReLU(),
-            tf.keras.layers.MaxPool2D((2, 2)),
+            Conv2D(filters=64, kernel_size=3, padding='same'),
+            BatchNormalization(),
+            ReLU(),
+            MaxPool2D((2, 2)),
 
-            tf.keras.layers.Conv2D(filters=64, kernel_size=3, padding='same'),
-            tf.keras.layers.BatchNormalization(),
-            tf.keras.layers.ReLU(),
-            tf.keras.layers.MaxPool2D((2, 2)), Flatten()]
+            Conv2D(filters=64, kernel_size=3, padding='same'),
+            BatchNormalization(),
+            ReLU(),
+            MaxPool2D((2, 2)),
+            Flatten()]
         )
         # Fully contextual embedding
         self.fce_dim = lstm_size * 2
@@ -44,6 +45,15 @@ class MatchingNetwork(Model):
     @tf.function
     def call(self, x_support, y_support, x_query, y_query):
         def _calc_cosine_distances(support, query_img):
+            """
+            Calculate cosine distances between support images and query one.
+            Args:
+                support (Tensor): Tensor of support images
+                query_img (Tensor): query image
+
+            Returns:
+
+            """
             eps = 1e-10
             similarities = tf.zeros([self.support_samples, self.batch],
                                     tf.float32)
@@ -69,6 +79,7 @@ class MatchingNetwork(Model):
         self.support_samples = x_support.shape[1]
         self.query_samples = x_query.shape[1]
 
+        # Get one-hot representation
         y_support = tf.cast(y_support, tf.int32)
         y_support_one_hot = tf.one_hot(y_support, self.way, axis=-1)
         y_support_one_hot = tf.cast(y_support_one_hot, tf.float32)
@@ -106,7 +117,6 @@ class MatchingNetwork(Model):
             if i_query == 0:
                 ce = categorical_crossentropy(query_labels, preds)
                 acc = tf.reduce_mean(eq)
-
             else:
                 ce += categorical_crossentropy(query_labels, preds)
                 acc += tf.reduce_mean(eq)
@@ -116,18 +126,37 @@ class MatchingNetwork(Model):
         return ce/self.query_samples, acc/self.query_samples
 
     def save(self, dir_path):
+        """
+        Save model to the provided directory.
+
+        Args:
+            dir_path (str): path to the directory to save the model files.
+
+        Returns: None
+
+        """
         if not os.path.exists(dir_path):
             os.makedirs(dir_path)
         # Save CNN encoder
         self.g.save(os.path.join(dir_path, 'cnn_encoder.h5'))
-
         # Save LSTM
         self.fce.save(os.path.join(dir_path, 'lstm.h5'))
 
     def load(self, dir_path):
+        """
+        Load model from provided directory.
+
+        Args:
+            dir_path (str): path to the directory from where restore model.
+
+        Returns: None
+
+        """
+        # Encoder CNN
         encoder_path = os.path.join(dir_path, 'cnn_encoder.h5')
         self.g(tf.zeros([1, self.w, self.h, self.c]))
         self.g.load_weights(encoder_path)
+        # LSTM
         lstm_path = os.path.join(dir_path, 'lstm.h5')
         self.fce(tf.zeros([1, self.batch_size, self.fce_dim]))
         self.fce.load_weights(lstm_path)
