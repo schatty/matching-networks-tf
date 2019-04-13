@@ -40,7 +40,7 @@ Obtained results for Omniglot after 30 epochs with `train` (`val` part was not e
 
 | Environment                 | 5-way-1-shot     | 5-way-5-shot     | 20-way-1-shot    | 20-way-5-shot    |
 |-----------------------------|------------------|------------------|------------------|------------------|
-| Accuracy                    | 95.9%            | 99.0%            | 88.8%            | 96.1%            |
+| Accuracy                    | 97.0%            | 99.3%            | 91.4%            | 97.4%            |
 
 ## Acknowledgements
 

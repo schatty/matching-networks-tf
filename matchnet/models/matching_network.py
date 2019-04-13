@@ -1,4 +1,5 @@
 import os
+import numpy as np
 import tensorflow as tf
 from tensorflow.keras.layers import Dense, Flatten, Conv2D, Bidirectional, \
     BatchNormalization, ReLU, MaxPool2D
@@ -37,7 +38,8 @@ class MatchingNetwork(Model):
             Flatten()]
         )
         # Fully contextual embedding
-        self.fce_dim = lstm_size * 2
+        assert self.w == self.h, "Current model operates only with square images for now"
+        self.fce_dim = int(np.floor(self.w / 16))**2 * 64 # Input LSTM dimenstion
         self.fce = tf.keras.Sequential([
             Bidirectional(tf.keras.layers.LSTM(lstm_size, return_sequences=True))
         ])
@@ -156,6 +158,7 @@ class MatchingNetwork(Model):
         encoder_path = os.path.join(dir_path, 'cnn_encoder.h5')
         self.g(tf.zeros([1, self.w, self.h, self.c]))
         self.g.load_weights(encoder_path)
+        
         # LSTM
         lstm_path = os.path.join(dir_path, 'lstm.h5')
         self.fce(tf.zeros([1, self.batch_size, self.fce_dim]))

@@ -1,6 +1,6 @@
 __Omniglot__
 
-| Accuracy                    | 95.9%            | 99.0%            | 88.8%            | 96.1%            |
+| Accuracy                    | 97.0%            | 99.3%            | 91.4%            | 97.4%            |
 |-----------------------------|------------------|------------------|------------------|------------------|
 | Author                      | Igor Kuznetsov   | Igor Kuznetsov   | Igor Kuznetsov   | Igor Kuznetsov   |
 | data.split                  | vinyals          | vinyals          | vinyals          | vinyals          |
@@ -21,6 +21,6 @@ __Omniglot__
 | data.test_way (test)        | 5                | 5                | 20               | 20               |
 | data.test_n_support (test)  | 1                | 5                | 1                | 5                |
 | data.test_n_query (test)    | 1                | 5                | 1                | 5                |
-| data.test_n_episodes (test) | 100              | 100              | 100              | 100              |
+| data.test_n_episodes (test) | 1000             | 1000             | 100              | 100              |
 | Encoder CNN architecture    | original (paper) | original (paper) | original (paper) | original (paper) |
 | seed                        | 2019             | 2019             | 2019             | 2019             |
