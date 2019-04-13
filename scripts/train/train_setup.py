@@ -38,9 +38,11 @@ def train(config):
     log_fn = os.path.join(log_dir, log_fn)
     print(f"All info about training can be found in {log_fn}")
 
+    # We want 'trainval' for omniglot
+    splitting = ['train', 'trainval'][config['data.dataset'] == 'omniglot']
     data_dir = config['data.dataset_path']
-    ret = load(data_dir, config, ['train', 'val'])
-    train_loader = ret['train']
+    ret = load(data_dir, config, [splitting, 'val'])
+    train_loader = ret[splitting]
     val_loader = ret['val']
 
     # Determine device

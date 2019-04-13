@@ -1,3 +1,4 @@
+import numpy as np
 import tensorflow as tf
 tf.config.gpu.set_per_process_memory_growth(True)
 from tqdm import tqdm
@@ -6,6 +7,9 @@ from matchnet.models import MatchingNetwork
 
 
 def eval(config):
+    np.random.seed(2019)
+    tf.random.set_seed(2019)
+    
     # Determine device
     if config['data.cuda']:
         cuda_num = config['data.gpu']
@@ -13,7 +17,7 @@ def eval(config):
     else:
         device_name = 'CPU:0'
 
-    data_dir = f"data/{config['data.dataset']}"
+    data_dir = config['data.dataset_path']
     ret = load(data_dir, config, ['test'])
     test_loader = ret['test']
 
